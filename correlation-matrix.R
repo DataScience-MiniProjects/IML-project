@@ -1,7 +1,7 @@
-setwd("C:Your/path/here")
 
-npf <- read.csv("npf_train.csv")
-# fix(npf)
+setwd("/home/osa/IMLproject2021")
+npf <- read.csv("npf_traincopy.csv")
+fix(npf)
 # View(npf)
 
 rownames(npf) <- npf[,"date"]
@@ -14,3 +14,5 @@ npf <- npf[,-2]
 npf <- npf[,-1]
 
 npf.cor = cor(npf)
+npf.cor
+
