@@ -1,5 +1,5 @@
 
-setwd("/home/osa/IMLproject2021")
+setwd(<your path>)
 npf <- read.csv("npf_traincopy.csv")
 fix(npf)
 # View(npf)
