@@ -2,7 +2,6 @@
 library(e1071) #svm naive-bayes
 library(caret) 
 set.seed(42)
-# standard deviationeilla ja ilman npftrain2 nptrain2mean
 
 npf <- read.csv("npf_train2.csv")
 npfm <- read.csv("npf_train2mean.csv")
@@ -29,8 +28,8 @@ summary(svm_mean_only)
 summary(svm_all)
 
 train_mean
-dev.off()
-plot(svm_mean_only, train_mean, CS.mean ~ RHIRGA42.mean)
+#dev.off()
+#plot(svm_mean_only, train_mean, CS.mean ~ RHIRGA42.mean)
 
 pred1 <- predict(svm_mean_only, newdata = test_mean)
 table(factor(test_mean$class4), pred1)
@@ -45,5 +44,3 @@ confusionMatrix(factor(test_all$class4), pred2)
 ta <- confusionMatrix(factor(test_all$class4), pred2)$overall
 ta[1] # acc: 0.6038251
 
-#data(iris)
-#iris$Species -  setosa, versicolor, virginica
