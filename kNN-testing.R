@@ -39,6 +39,9 @@ knn_mean <- train(class4 ~., data = train_mean, method = "knn",
 all_pred <- predict(knn_all, newdata = test_all)
 mean_pred <- predict(knn_mean, newdata = test_mean)
 
+all_probs <- predict(knn_all, newdata = test_all, type = "prob")
+mean_probs <- predict(knn_mean, newdata = test_mean, type = "prob")
+
 conf_all <- confusionMatrix(all_pred, test_all$class4)
 conf_mean <- confusionMatrix(mean_pred, test_mean$class4)
 
