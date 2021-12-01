@@ -3,13 +3,13 @@ library(randomForest)
 library(caret)
 set.seed(1)
 
-# npf <- read.csv("npf_Train2.csv")
+npf <- read.csv("npf_Train2.csv")
 npfm  <- read.csv("npf_train_means_height.csv")
 npfm2 <- read.csv("npf_train2mean_low.csv")
 npfm3 <- read.csv("npf_train_means_mid_height.csv")
 npfm4 <- read.csv("npf_Train2mean.csv")
-# rownames(npf) <- npf[,"date"]
-# npf <- npf[,-1]
+rownames(npf) <- npf[,"date"]
+npf <- npf[,-1]
 rownames(npfm) <- npfm[,"date"]
 npfm <- npfm[,-1]
 
@@ -22,7 +22,7 @@ rownames(npfm4) <- npfm4[,"date"]
 npfm4 <- npfm4[,-1]
 idx <- sample.int(nrow(npfm),300)
 
-#train_all <- npf[ idx,]
+#rain_all <- npf[ idx,]
 #test_all <- npf[-idx,]
 
 train_mean <- npfm[ idx,]
@@ -36,19 +36,24 @@ test_mean3 <- npfm3[-idx,]
 train_mean4 <- npfm4[ idx,]
 test_mean4 <- npfm4[-idx,]
 
+# mtry by default: square of the number of columns
 rF_mean <- randomForest(formula = factor(class4) ~ ., 
-                             data=train_mean, mtry=6,
-                             ntree=1000)
+                             data=train_mean,
+                             ntree=1000, importance=T,
+                             proximity=T)
 
 rF_mean2 <- randomForest(formula = factor(class4) ~ ., 
-                        data=train_mean2, mtry=6,
-                        ntree=1000)
+                             data=train_mean2,
+                             ntree=1000, importance=T,
+                             proximity=T)
 rF_mean3 <- randomForest(formula = factor(class4) ~ ., 
-                        data=train_mean3, mtry=6,
-                        ntree=1000)
+                                data=train_mean3,
+                             ntree=1000, importance=T,
+                             proximity=T)
 rF_mean4 <- randomForest(formula = factor(class4) ~ ., 
-                         data=train_mean4, mtry=6,
-                         ntree=1000)
+                             data=train_mean4,
+                             ntree=1000, importance=T,
+                             proximity=T)
 
 rF_mean
 rF_mean2
@@ -80,3 +85,7 @@ confusionMatrix(factor(test_mean3$class4), pred3)
 pred4 <- predict(rF_mean4, newdata = test_mean4)
 confusionMatrix(factor(test_mean4$class4), pred4)
 
+rF_mean$confusion
+rF_mean2$confusion
+rF_mean3$confusion
+rF_mean4$confusion
