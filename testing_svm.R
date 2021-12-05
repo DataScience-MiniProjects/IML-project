@@ -1,13 +1,14 @@
 # SVM correlation
 library(e1071) #svm naive-bayes
 library(caret) 
+library(dplyr)
 set.seed(42)
 
-npf <- read.csv("npf_train2.csv")
-npfm <- read.csv("npf_train2mean.csv")
-npfl <- read.csv("npf_train2mean_low.csv")
-npfh <- read.csv("npf_train__high.csv")
-npfm2 <- read.csv("npf_train_means_mid_height.csv")
+npf <- read.csv("/home/omistaja/IML-project/IML-project/npf_train2.csv")
+npfm <- read.csv("/home/omistaja/IML-project/IML-project/npf_train2mean.csv")
+npfl <- read.csv("/home/omistaja/IML-project/IML-project/npf_train2mean_low.csv")
+npfh <- read.csv("/home/omistaja/IML-project/IML-project/npf_train__high.csv")
+npfm2 <- read.csv("/home/omistaja/IML-project/IML-project/npf_train_means_mid_height.csv")
 
 rownames(npf) <- npf[,"date"]
 npf <- npf[,-1]
@@ -36,6 +37,41 @@ test_high_mean <- npfh[-idx, ]
 
 train_m2_mean <- npfm2[idx,]
 test_m2_mean <- npfm2[-idx, ]
+
+# PCA svm
+# https://rpubs.com/markloessi/505498
+dim(train_mean)
+head(train_mean[2:26])
+train_mean_pca = train_mean
+test_mean_pca = test_mean
+train_mean_pca[2:26] <- scale(train_mean_pca[2:26]) # training set
+test_mean_pca[2:26] <- scale(test_mean_pca[2:26]) # test set
+
+pca = preProcess(x = train_mean_pca[2:26], method = 'pca', pcaComp = 2)
+train_mean_pca <- predict(pca, train_mean_pca)
+train_mean_pca = train_mean_pca[c(2,3,1)]
+
+test_mean_pca <- predict(pca, test_mean_pca)
+test_mean_pca <- test_mean_pca[c(2,3,1)]
+head(train_mean_pca)
+head(test_mean_pca)
+
+svm_pca <- svm(factor(class4) ~., data=train_mean_pca, type = 'C-classification', kernel="radial", gamma=0.2, cost=15)
+pred_pca <- predict(svm_pca, newdata = test_mean_pca[-3])
+pred_pca
+#accuracy
+confusionMatrix(factor(test_mean_pca[,3]), pred_pca)
+tpca <- confusionMatrix(factor(test_mean_pca[,3]), pred_pca)$overall
+tpca[1] 
+cm = table(test_mean_pca[, 3], pred_pca)
+cm
+svm_pca %>% plot(test_mean_pca)
+# end PCA
+# mean_only: acc: 0.6338798
+# all: acc: 0.6038251
+# mean_low: acc: 0.636612
+# mean_high: acc: 0.6229508
+# m2: acc: 0.6174863
 
 train_control <- trainControl(method="repeatedcv", number=10, repeats=3)
 
@@ -96,7 +132,6 @@ tuned5 = tune.svm(class4 ~., data=train_m2_mean, gamma = 0.2, cost=15, tune.cont
 tuned5$performances   
 #gamma cost  error     dispersion
 # 0.2   15   0.4566667  0.1614789
-
 
 
 
