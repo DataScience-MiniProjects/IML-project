@@ -1,0 +1,65 @@
+---
+title: "Project Challenge"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+libraries
+
+```{r}
+library(randomForest)
+library(caret)
+set.seed(1)
+
+npfm2 <- read.csv("npf_train2mean_low.csv")
+rownames(npfm2) <- npfm2[,"date"]
+npfm2 <- npfm2[,-1]
+
+train_mean2 <- npfm2[ idx,]
+test_mean2 <- npfm2[-idx,]
+
+```
+## Binary accuracy (class 2)
+
+Binary accuracy on random forest classifier:
+
+```{r}
+
+```
+
+## Accuracy of the estimate of accuracy
+
+```{r}
+
+```
+
+## Perplexity
+
+```{r}
+
+```
+
+## Multi-class accuracy (class4)
+
+Multiclass accuracy on the random forest classifier:
+
+```{r}
+rF_mean2 <- randomForest(formula = factor(class4) ~ ., 
+                             data=train_mean2,
+                             ntree=1000, importance=T,
+                             proximity=T)
+
+pred2 <- predict(rF_mean2, newdata = test_mean2)
+confusionMatrix(factor(test_mean2$class4), pred2)
+rF_mean2$confusion
+
+a <- confusionMatrix(factor(test_mean2$class4), pred2)$overall
+a[1] 
+#Accuracy 
+#0.647541
+
+```
+
