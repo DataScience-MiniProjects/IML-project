@@ -138,7 +138,7 @@ testClass2 <-function(p) {
 
 set.seed(42)
 # Sample rows
-idx <- sample.int(nrow(npf),92)
+idx <- sample.int(nrow(npf),225)
 
 training_set <- npf[ idx,]
 validation_set <- npf[-idx,]
@@ -173,6 +173,17 @@ accuracy2
 ## Binary accuracy (class 2)
 
 ```{r}
+ctrl <- trainControl(method = "repeatedcv",
+                     number = 10,
+                     repeats = 10,
+                     classProbs = TRUE,
+                     savePredictions = "final")
+rFClass2 <- train(factor(class2) ~ .,
+            method="rf",
+            data=npf,
+            trControl=ctrl,
+            preProc=c("pca","center", "scale"))
+rFClass2
 pred_test2 <- predict(rFClass2, newdata = npf_test)
 length(which(pred_test2=="nonevent"))
 length(which(pred_test2=="event"))
@@ -231,6 +242,18 @@ acc
 ```
 
 ```{r}
+ctrl <- trainControl(method = "repeatedcv",
+                     number = 10,
+                     repeats = 10,
+                     classProbs = TRUE,
+                     savePredictions = "final")
+rFClass4 <- train(factor(class4) ~ .,
+                    method="rf",
+                    data=npf,
+                    trControl=ctrl,
+                    preProc=c("pca","center", "scale"))
+rFClass4
+
 pred_test4 <- predict(rFClass4, newdata = npf_test)
 probs_test4 <- predict(rFClass4, newdata = npf_test, type = "prob")
 
