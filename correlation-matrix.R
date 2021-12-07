@@ -1,5 +1,5 @@
 
-setwd(<your path>)
+setwd("<your path>")
 npf <- read.csv("npf_traincopy.csv")
 fix(npf)
 # View(npf)

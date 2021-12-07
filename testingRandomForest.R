@@ -1,91 +1,123 @@
 setwd('~/IMLproject2021')
 library(randomForest)
 library(caret)
-set.seed(1)
+set.seed(42)
 
-npf <- read.csv("npf_Train2.csv")
-npfm  <- read.csv("npf_train_means_height.csv")
-npfm2 <- read.csv("npf_train2mean_low.csv")
-npfm3 <- read.csv("npf_train_means_mid_height.csv")
-npfm4 <- read.csv("npf_Train2mean.csv")
+npf <- read.csv("npf_Train2mean.csv")
+npf$class2 <- factor("event",levels=c("nonevent","event"))
+npf$class2[npf$class4=="nonevent"] <- "nonevent"
 rownames(npf) <- npf[,"date"]
 npf <- npf[,-1]
-rownames(npfm) <- npfm[,"date"]
-npfm <- npfm[,-1]
 
-rownames(npfm2) <- npfm2[,"date"]
-npfm2 <- npfm2[,-1]
-rownames(npfm3) <- npfm3[,"date"]
-npfm3 <- npfm3[,-1]
+idx <- sample.int(nrow(npf),92)
 
-rownames(npfm4) <- npfm4[,"date"]
-npfm4 <- npfm4[,-1]
-idx <- sample.int(nrow(npfm),300)
+training_set <- npf[ idx,]
+validation_set <- npf[-idx,]
 
-#rain_all <- npf[ idx,]
-#test_all <- npf[-idx,]
+ctrl <- trainControl(method = "repeatedcv",
+                     number = 10,
+                     repeats = 10,
+                     classProbs = TRUE,
+                     savePredictions = "final")
+rFClass4 <- train(factor(class4) ~ .,
+                    method="rf",
+                    data=training_set,
+                    trControl=ctrl,
+                    preProc=c("pca","center", "scale"))
+rFClass4
 
-train_mean <- npfm[ idx,]
-test_mean <- npfm[-idx,]
+pred4 <- predict(rFClass4, newdata = validation_set)
 
-train_mean2 <- npfm2[ idx,]
-test_mean2 <- npfm2[-idx,]
-train_mean3 <- npfm3[ idx,]
-test_mean3 <- npfm3[-idx,]
+probs4 <- predict(rFClass4, newdata = validation_set, type = "prob")
 
-train_mean4 <- npfm4[ idx,]
-test_mean4 <- npfm4[-idx,]
+confusionMatrix(factor(validation_set$class4), pred4)
 
-# mtry by default: square of the number of columns
-rF_mean <- randomForest(formula = factor(class4) ~ ., 
-                             data=train_mean,
-                             ntree=1000, importance=T,
-                             proximity=T)
+accClass4 <-function(p,dataset) {
+  true_vals <- 0
+  for (i in 1:length(dataset$class2)) {
+    if (p$Ia[i] >=0.5 & dataset$class2[i]=="Ia") {
+      true_vals = true_vals + 1
+    }
+    if (p$Ib[i] >=0.5 & dataset$class2[i]=="Ib") {
+      true_vals = true_vals + 1
+    }
+    if (p$II[i] >=0.5 & dataset$class2[i]=="II") {
+      true_vals = true_vals + 1
+    }
+    if (p$nonevent[i] >0.5 & dataset$class2[i]=="nonevent") {
+      true_vals = true_vals + 1
+    }
+  }
+  return(true_vals/length(dataset$class2))
+}
 
-rF_mean2 <- randomForest(formula = factor(class4) ~ ., 
-                             data=train_mean2,
-                             ntree=1000, importance=T,
-                             proximity=T)
-rF_mean3 <- randomForest(formula = factor(class4) ~ ., 
-                                data=train_mean3,
-                             ntree=1000, importance=T,
-                             proximity=T)
-rF_mean4 <- randomForest(formula = factor(class4) ~ ., 
-                             data=train_mean4,
-                             ntree=1000, importance=T,
-                             proximity=T)
+accClass2 <- function(p,dataset) {
+  true_vals <- 0
+  for (i in 1:length(dataset$class2)) {
+    if (p$event[i] >=0.5 & dataset$class2[i]=="event") {
+      true_vals = true_vals + 1
+    }
+    if (p$nonevent[i] >0.5 & dataset$class2[i]=="nonevent") {
+      true_vals = true_vals + 1
+    }
+  }
+  return(true_vals/length(dataset$class2))
+}
 
-rF_mean
-rF_mean2
-rF_mean3
-rF_mean4
-plot(rF_mean)
-plot(rF_mean2)
-plot(rF_mean3)
-plot(rF_mean4)
-#rF_mean_tuned <-tuneRF(
-#  x=train_mean[,], #define predictor variables
-#  y=factor(train_mean$class4), #define response variable
-#  ntreeTry=5,
-#  mtryStart=9, 
-#  stepFactor=1.5,
-#  improve=T,
-#  trace=FALSE #don't show real-time progress
-#)
-#rF_mean_tuned 
-pred1 <- predict(rF_mean, newdata = test_mean)
-confusionMatrix(factor(test_mean$class4), pred1)
+testClass4 <-function(p) {
+  ia <- 0
+  ib <- 0
+  ii <- 0
+  nonevent <- 0
+  for (i in 1:length(dataset$class2)) {
+    if (p$Ia[i] >=0.5) {
+      ia = ia + 1
+    }
+    if (p$Ib[i] >=0.5) {
+      ib = ib + 1
+    }
+    if (p$II[i] >=0.5) {
+      ii = ii + 1
+    }
+    if (p$nonevent[i] >0.5) {
+      nonevent = nonevent + 1
+    }
+  }
+  return(list(ia, ib, ii, nonevent))
+}
+testClass2 <-function(p) {
+  event <- 0
+  nonevent <- 0
+  for (i in 1:length(dataset$class2)) {
+    if (p$event[i] >=0.5) {
+      event = event + 1
+    }
+    if (p$nonevent[i] >0.5) {
+      nonevent = nonevent + 1
+    }
+  }
+  return(list(ia, ib, ii, nonevent))
+}
+accurracy4 <- accClass4(probs4, validation_set)
 
-pred2 <- predict(rF_mean2, newdata = test_mean2)
-confusionMatrix(factor(test_mean2$class4), pred2)
+ctrl <- trainControl(method = "repeatedcv",
+                     number = 10,
+                     repeats = 10,
+                     classProbs = TRUE,
+                     savePredictions = "final")
+rFClass2 <- train(factor(class2) ~ .,
+            method="rf",
+            data=training_set,
+            trControl=ctrl,
+            preProc=c("pca","center", "scale"))
+rFClass2
 
-pred3 <- predict(rF_mean3, newdata = test_mean3)
-confusionMatrix(factor(test_mean3$class4), pred3)
+pred2 <- predict(rFClass2, newdata = validation_set)
 
-pred4 <- predict(rF_mean4, newdata = test_mean4)
-confusionMatrix(factor(test_mean4$class4), pred4)
+probs2 <- predict(rFClass2, newdata = validation_set, type = "prob")
 
-rF_mean$confusion
-rF_mean2$confusion
-rF_mean3$confusion
-rF_mean4$confusion
+confusionMatrix(factor(validation_set$class2), pred2)
+
+accuracy2 <- accClass2(probs2, validation_set)
+accuracy2
+

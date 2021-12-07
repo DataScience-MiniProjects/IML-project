@@ -7,22 +7,181 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-libraries
-
+Used libraries
 ```{r}
+library(ggfortify)
 library(randomForest)
 library(caret)
-set.seed(1)
+```
 
-npfm2 <- read.csv("npf_train2mean_low.csv")
-rownames(npfm2) <- npfm2[,"date"]
-npfm2 <- npfm2[,-1]
+Read data
 
-train_mean2 <- npfm2[ idx,]
-test_mean2 <- npfm2[-idx,]
+```{r}
+#setwd("path/to/folder")
+set.seed(42)
 
+npf <- read.csv("npf_train.csv")
+npf_test <- read.csv("npf_test_hidden.csv")
+
+rownames(npf) <- npf[,"date"]
+
+npf <- npf[,c(-1,-4)]
+npf_test <- npf_test[,c(-1,-2,-4)]
+
+npf <- npf[, c("date",	"class4", "CO242.mean",	"CO2504.mean",	"Glob.mean",	
+                "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
+                "NOx42.mean",	"NOx504.mean", "O342.mean",	"O3504.mean",	"Pamb0.mean",	
+                "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
+                "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
+                "CS.mean")]
+
+npf_test <- npf_test[, c("class4", "CO242.mean",	"CO2504.mean",	"Glob.mean",	
+                "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
+                "NOx42.mean",	"NOx504.mean", "O342.mean",	"O3504.mean",	"Pamb0.mean",	
+                "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
+                "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
+                "CS.mean")]
+
+npf_test$class2 <- "nonevent"
+npf_test$class4 <- "nonevent"
+npf$class2 <- factor("event",levels=c("nonevent","event"))
+npf$class2[npf$class4=="nonevent"] <- "nonevent"
+npf <- npf[,-1]
+```
+
+```{r}
+vars <- c("CO242.mean",	"CO2504.mean",	"Glob.mean",	
+                "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
+                "NOx42.mean",	"NOx504.mean", "O342.mean",	"O3504.mean",	"Pamb0.mean",	
+                "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
+                "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
+                "CS.mean")
+npf.pcA1 <- prcomp(npf_test[,vars], center=T, scale=T)
+npf.pcA2 <- prcomp(npf[,vars], center=T, scale=T)
+autoplot(npf.pcA1, data=npf_test, colour="class4", loadings=T, loadings.label=T)
+autoplot(npf.pcA2, data=npf, colour="class4", loadings=T, loadings.label=T)
+```
+
+
+Accuracy functions:
+
+```{r}
+accClass4 <-function(p,dataset) {
+  true_vals <- 0
+  for (i in 1:length(dataset$class4)) {
+    if (p$Ia[i] >0.5 & dataset$class4[i]=="Ia") {
+      true_vals = true_vals + 1
+    }
+    if (p$Ib[i] >0.5 & dataset$class4[i]=="Ib") {
+      true_vals = true_vals + 1
+    }
+    if (p$II[i] >0.5 & dataset$class4[i]=="II") {
+      true_vals = true_vals + 1
+    }
+    if (p$nonevent[i] >= 0.5 & dataset$class4[i]=="nonevent") {
+      true_vals = true_vals + 1
+    }
+  }
+  return(true_vals/length(dataset$class4))
+}
+
+accClass2 <- function(p,dataset) {
+  true_vals <- 0
+  for (i in 1:length(dataset$class2)) {
+    if (p$event[i] >=0.5 & dataset$class2[i]=="event") {
+      true_vals = true_vals + 1
+    }
+    if (p$nonevent[i] >0.5 & dataset$class2[i]=="nonevent") {
+      true_vals = true_vals + 1
+    }
+  }
+  return(true_vals/length(dataset$class2))
+}
+
+testClass4 <-function(p) {
+  ia <- 0
+  ib <- 0
+  ii <- 0
+  nonevent <- 0
+  for (i in 1:length(p$nonevent)) {
+    if (p$nonevent[i] >= 0.5) {
+      nonevent = nonevent + 1
+    }
+    if (p$II[i] > 0.5) {
+      ii = ii + 1
+    }
+    if (p$Ib[i] >0.5) {
+      ib = ib + 1
+    }
+    if (p$Ia[i] >0.5) {
+      ia= ia + 1
+    }
+  }
+  return(list(ia, ib, ii, nonevent))
+}
+testClass2 <-function(p) {
+  event <- 0
+  nonevent <- 0
+  for (i in 1:length(p$event)) {
+    if (p$event[i] >=0.5) {
+      event = event + 1
+    }
+    if (p$nonevent[i] >0.5) {
+      nonevent = nonevent + 1
+    }
+  }
+  return(list(event, nonevent))
+}
+```
+
+```{r}
+
+set.seed(42)
+# Sample rows
+idx <- sample.int(nrow(npf),92)
+
+training_set <- npf[ idx,]
+validation_set <- npf[-idx,]
+
+# 10-fold Cross-validation is repeated 10 times
+# Class probabilities are collected
+# The predictions for optimal tuning parameters are saved
+# The data is scaled and centered. Principal component analysis is used to 
+# find the optimal parameters
+ctrl <- trainControl(method = "repeatedcv",
+                     number = 10,
+                     repeats = 10,
+                     classProbs = TRUE,
+                     savePredictions = "final")
+rFClass2 <- train(factor(class2) ~ .,
+            method="rf",
+            data=training_set,
+            trControl=ctrl,
+            preProc=c("pca","center", "scale"))
+rFClass2
+
+pred2 <- predict(rFClass2, newdata = validation_set)
+
+probs2 <- predict(rFClass2, newdata = validation_set, type = "prob")
+
+confusionMatrix(factor(validation_set$class2), pred2)
+```
+```{r}
+accuracy2 <- accClass2(probs2, validation_set)
+accuracy2
 ```
 ## Binary accuracy (class 2)
+
+```{r}
+pred_test2 <- predict(rFClass2, newdata = npf_test)
+length(which(pred_test2=="nonevent"))
+length(which(pred_test2=="event"))
+probs_test2 <- predict(rFClass2, newdata = npf_test, type = "prob")
+estimates2 <- testClass2(probs_test2)
+estimates2
+```
+
+
 
 Binary accuracy on random forest classifier:
 
@@ -47,19 +206,38 @@ Binary accuracy on random forest classifier:
 Multiclass accuracy on the random forest classifier:
 
 ```{r}
-rF_mean2 <- randomForest(formula = factor(class4) ~ ., 
-                             data=train_mean2,
-                             ntree=1000, importance=T,
-                             proximity=T)
+ctrl <- trainControl(method = "repeatedcv",
+                     number = 10,
+                     repeats = 10,
+                     classProbs = TRUE,
+                     savePredictions = "final")
+rFClass4 <- train(factor(class4) ~ .,
+                    method="rf",
+                    data=training_set,
+                    trControl=ctrl,
+                    preProc=c("pca","center", "scale"))
+rFClass4
 
-pred2 <- predict(rF_mean2, newdata = test_mean2)
-confusionMatrix(factor(test_mean2$class4), pred2)
-rF_mean2$confusion
+pred4 <- predict(rFClass4, newdata = validation_set)
 
-a <- confusionMatrix(factor(test_mean2$class4), pred2)$overall
-a[1] 
-#Accuracy 
-#0.647541
+probs4 <- predict(rFClass4, newdata = validation_set, type = "prob")
+
+confusionMatrix(factor(validation_set$class4), pred4)
+```
+
+```{r}
+acc <- accClass4(probs4, validation_set)
+acc
+```
+
+```{r}
+pred_test4 <- predict(rFClass4, newdata = npf_test)
+probs_test4 <- predict(rFClass4, newdata = npf_test, type = "prob")
+
+length(which(pred_test4=="nonevent"))
+length(which(pred_test4=="Ia"))
+length(which(pred_test4=="Ib"))
+length(which(pred_test4=="II"))
 
 ```
 
