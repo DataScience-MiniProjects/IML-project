@@ -8,7 +8,7 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 Used libraries
-```{r}
+```{r, message=F}
 library(ggfortify)
 library(randomForest)
 library(caret)
@@ -69,16 +69,20 @@ Accuracy functions:
 accClass4 <-function(p,dataset) {
   true_vals <- 0
   for (i in 1:length(dataset$class4)) {
-    if (p$Ia[i] >0.5 & dataset$class4[i]=="Ia") {
+    if (p$Ia[i] > p$nonevent[i] & p$Ia[i] > p$II[i] &
+        p$Ia[i] > p$Ib[i] & dataset$class4[i]=="Ia") {
       true_vals = true_vals + 1
     }
-    if (p$Ib[i] >0.5 & dataset$class4[i]=="Ib") {
+    if (p$Ib[i] > p$nonevent[i] & p$Ib[i] > p$II[i] &
+        p$Ib[i] > p$Ia[i] & dataset$class4[i]=="Ib") {
       true_vals = true_vals + 1
     }
-    if (p$II[i] >0.5 & dataset$class4[i]=="II") {
+    if (p$II[i] > p$nonevent[i] & p$II[i] > p$Ia[i] &
+        p$II[i] > p$Ib[i] & dataset$class4[i]=="II") {
       true_vals = true_vals + 1
     }
-    if (p$nonevent[i] >= 0.5 & dataset$class4[i]=="nonevent") {
+    if (p$nonevent[i] > p$II[i] & p$nonevent[i] > p$Ia[i] &
+        p$nonevent[i] > p$Ib[i] & dataset$class4[i]=="nonevent") {
       true_vals = true_vals + 1
     }
   }
@@ -104,17 +108,21 @@ testClass4 <-function(p) {
   ii <- 0
   nonevent <- 0
   for (i in 1:length(p$nonevent)) {
-    if (p$nonevent[i] >= 0.5) {
+    if (p$nonevent[i] > p$II[i] & p$nonevent[i] > p$Ia[i] &
+        p$nonevent[i] > p$Ib[i]) {
       nonevent = nonevent + 1
     }
-    if (p$II[i] > 0.5) {
+    if (p$II[i] > p$nonevent[i] & p$II[i] > p$Ia[i] &
+        p$II[i] > p$Ib[i]) {
       ii = ii + 1
     }
-    if (p$Ib[i] >0.5) {
-      ib = ib + 1
+    if (p$Ia[i] > p$nonevent[i] & p$Ia[i] > p$II[i] &
+        p$Ia[i] > p$Ib[i]) {
+      ia = ia + 1
     }
-    if (p$Ia[i] >0.5) {
-      ia= ia + 1
+    if (p$Ib[i] > p$nonevent[i] & p$Ib[i] > p$II[i] &
+        p$Ib[i] > p$Ia[i]) {
+      ib = ib + 1
     }
   }
   return(list(ia, ib, ii, nonevent))
@@ -123,10 +131,10 @@ testClass2 <-function(p) {
   event <- 0
   nonevent <- 0
   for (i in 1:length(p$event)) {
-    if (p$event[i] >=0.5) {
+    if (p$event[i] >0.5) {
       event = event + 1
     }
-    if (p$nonevent[i] >0.5) {
+    if (p$nonevent[i] >= 0.5) {
       nonevent = nonevent + 1
     }
   }
@@ -134,41 +142,40 @@ testClass2 <-function(p) {
 }
 ```
 
+Binary accuracy on random forest classifier with different sized training/validation sets:
+
 ```{r}
 
 set.seed(42)
 # Sample rows
-idx <- sample.int(nrow(npf),225)
+nmbr = c(90, 180, 270)
+accuracy_2 <- c()
+for (i in 1:3) {
+  idx <- sample.int(nrow(npf),nmbr[i])
 
-training_set <- npf[ idx,]
-validation_set <- npf[-idx,]
+  training_set <- npf[ idx,]
+  validation_set <- npf[-idx,]
+  
+  # 10-fold Cross-validation is repeated 10 times
+  # Class probabilities are collected
+  # The predictions for optimal tuning parameters are saved
+  # The data is scaled and centered. Principal component analysis is used to 
+  # find the optimal parameters
+  ctrl <- trainControl(method = "repeatedcv",
+                       number = 10,
+                       repeats = 10,
+                       classProbs = TRUE,
+                       savePredictions = "final")
+  rFClass2 <- train(factor(class2) ~ .,
+              method="rf",
+              data=training_set,
+              trControl=ctrl,
+              preProc=c("pca","center", "scale"))
+  probs2 <- predict(rFClass2, newdata = validation_set, type = "prob")
+  accuracy_2 <- c(accuracy_2, accClass2(probs2, validation_set))
+}
+accuracy_2
 
-# 10-fold Cross-validation is repeated 10 times
-# Class probabilities are collected
-# The predictions for optimal tuning parameters are saved
-# The data is scaled and centered. Principal component analysis is used to 
-# find the optimal parameters
-ctrl <- trainControl(method = "repeatedcv",
-                     number = 10,
-                     repeats = 10,
-                     classProbs = TRUE,
-                     savePredictions = "final")
-rFClass2 <- train(factor(class2) ~ .,
-            method="rf",
-            data=training_set,
-            trControl=ctrl,
-            preProc=c("pca","center", "scale"))
-rFClass2
-
-pred2 <- predict(rFClass2, newdata = validation_set)
-
-probs2 <- predict(rFClass2, newdata = validation_set, type = "prob")
-
-confusionMatrix(factor(validation_set$class2), pred2)
-```
-```{r}
-accuracy2 <- accClass2(probs2, validation_set)
-accuracy2
 ```
 ## Binary accuracy (class 2)
 
@@ -183,7 +190,7 @@ rFClass2 <- train(factor(class2) ~ .,
             data=npf,
             trControl=ctrl,
             preProc=c("pca","center", "scale"))
-rFClass2
+
 pred_test2 <- predict(rFClass2, newdata = npf_test)
 length(which(pred_test2=="nonevent"))
 length(which(pred_test2=="event"))
@@ -193,12 +200,6 @@ estimates2
 ```
 
 
-
-Binary accuracy on random forest classifier:
-
-```{r}
-
-```
 
 ## Accuracy of the estimate of accuracy
 
@@ -217,29 +218,30 @@ Binary accuracy on random forest classifier:
 Multiclass accuracy on the random forest classifier:
 
 ```{r}
-ctrl <- trainControl(method = "repeatedcv",
-                     number = 10,
-                     repeats = 10,
-                     classProbs = TRUE,
-                     savePredictions = "final")
-rFClass4 <- train(factor(class4) ~ .,
-                    method="rf",
-                    data=training_set,
-                    trControl=ctrl,
-                    preProc=c("pca","center", "scale"))
-rFClass4
+nmbr = c(90, 180, 270)
+accuracy_4 <- c()
+for (i in 1:3) {
+  idx <- sample.int(nrow(npf),nmbr[i])
 
-pred4 <- predict(rFClass4, newdata = validation_set)
-
-probs4 <- predict(rFClass4, newdata = validation_set, type = "prob")
-
-confusionMatrix(factor(validation_set$class4), pred4)
+  training_set <- npf[ idx,]
+  validation_set <- npf[-idx,]
+  ctrl <- trainControl(method = "repeatedcv",
+                       number = 10,
+                       repeats = 10,
+                       classProbs = TRUE,
+                       savePredictions = "final")
+  rFClass4 <- train(factor(class4) ~ .,
+                      method="rf",
+                      data=training_set,
+                      trControl=ctrl,
+                      preProc=c("pca","center", "scale"))
+  probs4 <- predict(rFClass4, newdata = validation_set, type = "prob")
+  accuracy_4 <- c(accuracy_4, accClass4(probs4, validation_set))
+}
+accuracy_4
+# confusionMatrix(factor(validation_set$class4), pred4)
 ```
 
-```{r}
-acc <- accClass4(probs4, validation_set)
-acc
-```
 
 ```{r}
 ctrl <- trainControl(method = "repeatedcv",
@@ -252,11 +254,11 @@ rFClass4 <- train(factor(class4) ~ .,
                     data=npf,
                     trControl=ctrl,
                     preProc=c("pca","center", "scale"))
-rFClass4
 
 pred_test4 <- predict(rFClass4, newdata = npf_test)
 probs_test4 <- predict(rFClass4, newdata = npf_test, type = "prob")
-
+# Both ways give the same answer
+testClass4(probs_test4)
 length(which(pred_test4=="nonevent"))
 length(which(pred_test4=="Ia"))
 length(which(pred_test4=="Ib"))
