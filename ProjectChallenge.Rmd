@@ -35,7 +35,7 @@ npf <- npf[, c("date",	"class4", "CO242.mean",	"CO2504.mean",	"Glob.mean",
                 "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
                 "CS.mean")]
 
-npf_test <- npf_test[, c("class4", "CO242.mean",	"CO2504.mean",	"Glob.mean",	
+npf_test <- npf_test[, c("class4","CO242.mean",	"CO2504.mean",	"Glob.mean",	
                 "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
                 "NOx42.mean",	"NOx504.mean", "O342.mean",	"O3504.mean",	"Pamb0.mean",	
                 "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
@@ -56,100 +56,32 @@ vars <- c("CO242.mean",	"CO2504.mean",	"Glob.mean",
                 "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
                 "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
                 "CS.mean")
-npf.pcA1 <- prcomp(npf_test[,vars], center=T, scale=T)
 npf.pcA2 <- prcomp(npf[,vars], center=T, scale=T)
-autoplot(npf.pcA1, data=npf_test, colour="class4", loadings=T, loadings.label=T)
 autoplot(npf.pcA2, data=npf, colour="class4", loadings=T, loadings.label=T)
 ```
 
 
-Accuracy functions:
-
-```{r}
-accClass4 <-function(p,dataset) {
-  true_vals <- 0
-  for (i in 1:length(dataset$class4)) {
-    if (p$Ia[i] > p$nonevent[i] & p$Ia[i] > p$II[i] &
-        p$Ia[i] > p$Ib[i] & dataset$class4[i]=="Ia") {
-      true_vals = true_vals + 1
-    }
-    if (p$Ib[i] > p$nonevent[i] & p$Ib[i] > p$II[i] &
-        p$Ib[i] > p$Ia[i] & dataset$class4[i]=="Ib") {
-      true_vals = true_vals + 1
-    }
-    if (p$II[i] > p$nonevent[i] & p$II[i] > p$Ia[i] &
-        p$II[i] > p$Ib[i] & dataset$class4[i]=="II") {
-      true_vals = true_vals + 1
-    }
-    if (p$nonevent[i] > p$II[i] & p$nonevent[i] > p$Ia[i] &
-        p$nonevent[i] > p$Ib[i] & dataset$class4[i]=="nonevent") {
-      true_vals = true_vals + 1
-    }
-  }
-  return(true_vals/length(dataset$class4))
-}
-
-accClass2 <- function(p,dataset) {
-  true_vals <- 0
-  for (i in 1:length(dataset$class2)) {
-    if (p$event[i] >=0.5 & dataset$class2[i]=="event") {
-      true_vals = true_vals + 1
-    }
-    if (p$nonevent[i] >0.5 & dataset$class2[i]=="nonevent") {
-      true_vals = true_vals + 1
-    }
-  }
-  return(true_vals/length(dataset$class2))
-}
-
-testClass4 <-function(p) {
-  ia <- 0
-  ib <- 0
-  ii <- 0
-  nonevent <- 0
-  for (i in 1:length(p$nonevent)) {
-    if (p$nonevent[i] > p$II[i] & p$nonevent[i] > p$Ia[i] &
-        p$nonevent[i] > p$Ib[i]) {
-      nonevent = nonevent + 1
-    }
-    if (p$II[i] > p$nonevent[i] & p$II[i] > p$Ia[i] &
-        p$II[i] > p$Ib[i]) {
-      ii = ii + 1
-    }
-    if (p$Ia[i] > p$nonevent[i] & p$Ia[i] > p$II[i] &
-        p$Ia[i] > p$Ib[i]) {
-      ia = ia + 1
-    }
-    if (p$Ib[i] > p$nonevent[i] & p$Ib[i] > p$II[i] &
-        p$Ib[i] > p$Ia[i]) {
-      ib = ib + 1
-    }
-  }
-  return(list(ia, ib, ii, nonevent))
-}
-testClass2 <-function(p) {
-  event <- 0
-  nonevent <- 0
-  for (i in 1:length(p$event)) {
-    if (p$event[i] >0.5) {
-      event = event + 1
-    }
-    if (p$nonevent[i] >= 0.5) {
-      nonevent = nonevent + 1
-    }
-  }
-  return(list(event, nonevent))
-}
-```
-
 Binary accuracy on random forest classifier with different sized training/validation sets:
 
 ```{r}
-
+accClass2 <- function(p,dataset) {
+  true_vals <- 0;events <- 0;nonevents <- 0;
+  for (i in 1:length(dataset$class2)) {
+    if (p$event[i] >=0.5 & dataset$class2[i]=="event") {
+      true_vals<-true_vals+1;events<-events+1;
+    }
+    if (p$nonevent[i] >0.5 & dataset$class2[i]=="nonevent") {
+      true_vals<-true_vals+1;nonevents<-nonevents+1 
+    }
+  }
+  return(c(true_vals/length(dataset$class2), 
+         events/length(which(dataset$class4=="event")), 
+         nonevents/length(which(dataset$class4=="nonevent"))))
+}
 set.seed(42)
-# Sample rows
+# Sample size
 nmbr = c(90, 180, 270)
-accuracy_2 <- c()
+accuracy_2 <-data.frame("Total","Event","Nonevent")
 for (i in 1:3) {
   idx <- sample.int(nrow(npf),nmbr[i])
 
@@ -172,33 +104,11 @@ for (i in 1:3) {
               trControl=ctrl,
               preProc=c("pca","center", "scale"))
   probs2 <- predict(rFClass2, newdata = validation_set, type = "prob")
-  accuracy_2 <- c(accuracy_2, accClass2(probs2, validation_set))
+  accuracy_2 <- rbind(accuracy_2, accClass2(probs2, validation_set))
 }
 accuracy_2
-
 ```
 ## Binary accuracy (class 2)
-
-```{r}
-ctrl <- trainControl(method = "repeatedcv",
-                     number = 10,
-                     repeats = 10,
-                     classProbs = TRUE,
-                     savePredictions = "final")
-rFClass2 <- train(factor(class2) ~ .,
-            method="rf",
-            data=npf,
-            trControl=ctrl,
-            preProc=c("pca","center", "scale"))
-
-pred_test2 <- predict(rFClass2, newdata = npf_test)
-length(which(pred_test2=="nonevent"))
-length(which(pred_test2=="event"))
-probs_test2 <- predict(rFClass2, newdata = npf_test, type = "prob")
-estimates2 <- testClass2(probs_test2)
-estimates2
-```
-
 
 
 ## Accuracy of the estimate of accuracy
@@ -218,11 +128,40 @@ estimates2
 Multiclass accuracy on the random forest classifier:
 
 ```{r}
+set.seed(42)
+# Calculates the accuracy to each class and the total accuracy
+accClass4 <-function(p,dataset) {
+  true_vals <- 0;ia <- 0;ib <- 0;
+  ii <- 0;nonevent <- 0;
+  for (i in 1:length(dataset$class4)) {
+    if (p$Ia[i] > p$nonevent[i] & p$Ia[i] > p$II[i] &
+        p$Ia[i] > p$Ib[i] & dataset$class4[i]=="Ia") {
+      true_vals<-true_vals+1;ia<-ia+1;
+    }
+    if (p$Ib[i] > p$nonevent[i] & p$Ib[i] > p$II[i] &
+        p$Ib[i] > p$Ia[i] & dataset$class4[i]=="Ib") {
+      true_vals<-true_vals+1;ib <- ib + 1;
+    }
+    if (p$II[i] > p$nonevent[i] & p$II[i] > p$Ia[i] &
+        p$II[i] > p$Ib[i] & dataset$class4[i]=="II") {
+      true_vals<-true_vals+1;ii<-ii+1;
+    }
+    if (p$nonevent[i] > p$II[i] & p$nonevent[i] > p$Ia[i] &
+        p$nonevent[i] > p$Ib[i] & dataset$class4[i]=="nonevent") {
+      true_vals<-true_vals+1;nonevent<-nonevent+1;
+    }
+  }
+  return(c(true_vals/length(dataset$class4), 
+         ia/length(which(dataset$class4=="Ia")),
+         ib/length(which(dataset$class4=="Ib")), 
+         ii/length(which(dataset$class4=="II")), 
+         nonevent/length(which(dataset$class4=="nonevent"))))
+}
+
 nmbr = c(90, 180, 270)
-accuracy_4 <- c()
+accuracy_4 <- accuracy_2 <-data.frame("Total","Ia","Ib","II","Nonevent")
 for (i in 1:3) {
   idx <- sample.int(nrow(npf),nmbr[i])
-
   training_set <- npf[ idx,]
   validation_set <- npf[-idx,]
   ctrl <- trainControl(method = "repeatedcv",
@@ -236,10 +175,9 @@ for (i in 1:3) {
                       trControl=ctrl,
                       preProc=c("pca","center", "scale"))
   probs4 <- predict(rFClass4, newdata = validation_set, type = "prob")
-  accuracy_4 <- c(accuracy_4, accClass4(probs4, validation_set))
+  accuracy_4 <- rbind(accuracy_4, accClass4(probs4, validation_set))
 }
 accuracy_4
-# confusionMatrix(factor(validation_set$class4), pred4)
 ```
 
 
@@ -257,12 +195,52 @@ rFClass4 <- train(factor(class4) ~ .,
 
 pred_test4 <- predict(rFClass4, newdata = npf_test)
 probs_test4 <- predict(rFClass4, newdata = npf_test, type = "prob")
-# Both ways give the same answer
-testClass4(probs_test4)
+
 length(which(pred_test4=="nonevent"))
 length(which(pred_test4=="Ia"))
 length(which(pred_test4=="Ib"))
 length(which(pred_test4=="II"))
+```
+
+```{r}
+# Code to produce the answer-csv
+# The first column "class4" in the answers.csv file is our 
+# prediction for the day, where class4 is Ia, Ib, II, or nonevent.
+# The second column "p" is our prediction for probability Pr(class2=event)
+
+
+# Creates the csv and adds the first line
+# Change the string here to our guess of the accuracy
+write.table(0.75,
+             file="./answers.csv",
+             append = F,
+             sep=',',
+             row.names=F,
+             col.names=F)
+
+# Write column names to the file
+write.table(data.frame("class4","p"),
+            file="./answers.csv",
+            append = T,
+            sep=',',
+            row.names=F,
+            col.names=F)
+
+# testing testing
+#setwd()
+#probs_test4 <- data.frame(c(0.1,0.2,0.5,0.1,0.5),c(0.6,0.05,0.1,0.2,0.05),c(0.1,0.7,0.2,0.2,0.15),c(0.2,0.05,0.2,0.5,0.3))
+#colnames(probs_test4)<- c("Ia","Ib","II","nonevent")
+
+# Assume the class probabilities for each row are in probs_test4
+classes_test4 <- colnames(probs_test4)[max.col(probs_test4, ties.method = "first")]
+
+# Write the class predictions and probabilities
+write.table(data.frame(classes_test4, (probs_test4$Ia+probs_test4$Ib+probs_test4$II)),
+            file="./answers.csv",
+            append = T,
+            sep=',',
+            row.names=F,
+            col.names=F)
 
 ```
 

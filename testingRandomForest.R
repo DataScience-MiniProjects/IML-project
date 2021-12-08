@@ -32,38 +32,6 @@ probs4 <- predict(rFClass4, newdata = validation_set, type = "prob")
 
 confusionMatrix(factor(validation_set$class4), pred4)
 
-accClass4 <-function(p,dataset) {
-  true_vals <- 0
-  for (i in 1:length(dataset$class2)) {
-    if (p$Ia[i] >=0.5 & dataset$class2[i]=="Ia") {
-      true_vals = true_vals + 1
-    }
-    if (p$Ib[i] >=0.5 & dataset$class2[i]=="Ib") {
-      true_vals = true_vals + 1
-    }
-    if (p$II[i] >=0.5 & dataset$class2[i]=="II") {
-      true_vals = true_vals + 1
-    }
-    if (p$nonevent[i] >0.5 & dataset$class2[i]=="nonevent") {
-      true_vals = true_vals + 1
-    }
-  }
-  return(true_vals/length(dataset$class2))
-}
-
-accClass2 <- function(p,dataset) {
-  true_vals <- 0
-  for (i in 1:length(dataset$class2)) {
-    if (p$event[i] >=0.5 & dataset$class2[i]=="event") {
-      true_vals = true_vals + 1
-    }
-    if (p$nonevent[i] >0.5 & dataset$class2[i]=="nonevent") {
-      true_vals = true_vals + 1
-    }
-  }
-  return(true_vals/length(dataset$class2))
-}
-
 testClass4 <-function(p) {
   ia <- 0
   ib <- 0
@@ -85,19 +53,7 @@ testClass4 <-function(p) {
   }
   return(list(ia, ib, ii, nonevent))
 }
-testClass2 <-function(p) {
-  event <- 0
-  nonevent <- 0
-  for (i in 1:length(dataset$class2)) {
-    if (p$event[i] >=0.5) {
-      event = event + 1
-    }
-    if (p$nonevent[i] >0.5) {
-      nonevent = nonevent + 1
-    }
-  }
-  return(list(ia, ib, ii, nonevent))
-}
+
 accurracy4 <- accClass4(probs4, validation_set)
 
 ctrl <- trainControl(method = "repeatedcv",
