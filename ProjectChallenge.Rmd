@@ -25,90 +25,59 @@ npf_test <- read.csv("npf_test_hidden.csv")
 
 rownames(npf) <- npf[,"date"]
 
-npf <- npf[,c(-1,-4)]
-npf_test <- npf_test[,c(-1,-2,-3,-4)]
+#npf <- npf[,c(-1,-4)]
+#npf_test <- npf_test[,c(-1,-4)]
 
-npf <- npf[, c("date",	"class4", "CO242.mean",	"CO2504.mean",	"Glob.mean",	
-                "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
-                "NOx42.mean",	"NOx504.mean", "O342.mean",	"O3504.mean",	"Pamb0.mean",	
-                "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
-                "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
-                "CS.mean")]
 
-npf_test <- npf_test[, c("CO242.mean",	"CO2504.mean",	"Glob.mean",	
-                "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
-                "NOx42.mean",	"NOx504.mean", "O342.mean",	"O3504.mean",	"Pamb0.mean",	
-                "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
-                "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
-                "CS.mean")]
+# npf <- npf[, c("date",	"class4", "CO242.mean",	"CO2504.mean",	"Glob.mean",	
+#                 "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
+#                 "NOx42.mean",	"NOx504.mean", "O342.mean",	"O3504.mean",	"Pamb0.mean",	
+#                 "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
+#                 "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
+#                 "CS.mean")]
+# 
+# npf_test <- npf_test[, c("CO242.mean",	"CO2504.mean",	"Glob.mean",	
+#                 "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
+#                 "NOx42.mean",	"NOx504.mean", "O342.mean",	"O3504.mean",	"Pamb0.mean",	
+#                 "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
+#                 "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
+#                 "CS.mean")]
+vars <- colnames(npf)[sapply(colnames(npf),
+                             function(s) nchar(s)>5 && substr(s,nchar(s)-4,nchar(s))==".mean")]
+vars2 <- colnames(npf_test)[sapply(colnames(npf_test),
+                             function(s) nchar(s)>5 && substr(s,nchar(s)-4,nchar(s))==".mean")]
+npf <- npf[,c(vars,"class4")]
+npf_test <- npf_test[,c(vars2)]
+## strip the trailing ".mean" to make the variable names prettier
+colnames(npf)[1:length(vars)] <- sapply(colnames(npf)[1:length(vars)],
+                                        function(s) substr(s,1,nchar(s)-5))
+vars <- colnames(npf)[1:length(vars)]
 
-npfBin <- npf
-npfBin$class2 <- factor("event",levels=c("nonevent","event"))
-npfBin$class2[npf$class4=="nonevent"] <- "nonevent"
-npf <- npf[,-1]
-npfBin <- npfBin[,-1]
-npfBin <- subset(npfBin, select=-c(class4))
+colnames(npf_test)[1:length(vars2)] <- sapply(colnames(npf_test)[1:length(vars2)],
+                                        function(s) substr(s,1,nchar(s)-5))
+vars2 <- colnames(npf_test)[1:length(vars2)]
+#npfBin <- npf
+#npfBin$class2 <- factor("event",levels=c("nonevent","event"))
+#npfBin$class2[npf$class4=="nonevent"] <- "nonevent"
+#npf <- npf[,-1]
+#npfBin <- npfBin[,-1]
+#npfBin <- subset(npfBin, select=-c(class4))
 ```
 
 ```{r}
-vars <- c("CO242.mean",	"CO2504.mean",	"Glob.mean",	
-                "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
-                "NOx42.mean",	"NOx504.mean", "O342.mean",	"O3504.mean",	"Pamb0.mean",	
-                "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
-                "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
-                "CS.mean")
-npf.pcA2 <- prcomp(npf[,vars], center=T, scale=T)
+# vars <- c("CO242.mean",	"CO2504.mean",	"Glob.mean",	
+#                 "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
+#                 "NOx42.mean",	"NOx504.mean", "O342.mean",	"O3504.mean",	"Pamb0.mean",	
+#                 "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
+#                 "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
+#                 "CS.mean")
+npf.pcA2 <- prcomp(scale(npf[,vars]))
+npf.pcA2.withtest <- prcomp(scale(rbind(npf[,vars],npf_test[,vars])))
 autoplot(npf.pcA2, data=npf, colour="class4", loadings=T, loadings.label=T)
 ```
 
 
 Binary accuracy on random forest classifier with different sized training/validation sets:
-
-```{r}
-accClass2 <- function(p,dataset) {
-  true_vals <- 0;events <- 0;nonevents <- 0;
-  for (i in 1:length(dataset$class2)) {
-    if (p$event[i] >=0.5 & dataset$class2[i]=="event") {
-      true_vals<-true_vals+1;events<-events+1;
-    }
-    if (p$nonevent[i] >0.5 & dataset$class2[i]=="nonevent") {
-      true_vals<-true_vals+1;nonevents<-nonevents+1 
-    }
-  }
-  return(c(true_vals/length(dataset$class2), 
-         events/length(which(dataset$class2=="event")), 
-         nonevents/length(which(dataset$class2=="nonevent"))))
-}
-set.seed(42)
-# Sample size
-nmbr = c(90, 180, 270)
-accuracy_2 <-data.frame("Total","Event","Nonevent")
-for (i in 1:3) {
-  idx <- sample.int(nrow(npf),nmbr[i])
-
-  training_set <- npfBin[ idx,]
-  validation_set <- npfBin[-idx,]
-  
-  # 10-fold Cross-validation is repeated 10 times
-  # Class probabilities are collected
-  # The predictions for optimal tuning parameters are saved
-  # The data is scaled and centered. Principal component analysis is used to 
-  # find the optimal parameters
-  ctrl <- trainControl(method = "repeatedcv",
-                       number = 10,
-                       repeats = 10,
-                       classProbs = TRUE,
-                       savePredictions = "final")
-  rFClass2 <- train(factor(class2) ~ .,
-              method="rf",
-              data=training_set,
-              trControl=ctrl,
-              preProc=c("pca","center", "scale"))
-  probs2 <- predict(rFClass2, newdata = validation_set, type = "prob")
-  accuracy_2 <- rbind(accuracy_2, accClass2(probs2, validation_set))
-}
-accuracy_2
-```
 ## Binary accuracy (class 2)
 
 
@@ -158,44 +127,52 @@ accClass4 <-function(p,dataset) {
          ii/length(which(dataset$class4=="II")), 
          nonevent/length(which(dataset$class4=="nonevent"))))
 }
-
+npf.pcA2 <- prcomp(npf[,vars], center=T, scale=T)
 nmbr = c(90, 180, 270)
-accuracy_4 <- accuracy_2 <-data.frame("Total","Ia","Ib","II","Nonevent")
+accuracy_4 <-data.frame("Total","Ia","Ib","II","Nonevent")
+
 for (i in 1:3) {
   idx <- sample.int(nrow(npf),nmbr[i])
   training_set <- npf[ idx,]
   validation_set <- npf[-idx,]
+  train.pc <- data.frame(npf.pcA2$x[idx,1:14])
+  train.pc$class4 <- npf[idx,]$class4
+  validate.pc <- data.frame(npf.pcA2$x[-idx,1:14])
+  validate.pc$class4 <- npf[-idx,]$class4
   ctrl <- trainControl(method = "repeatedcv",
                        number = 10,
                        repeats = 10,
-                       classProbs = TRUE,
-                       savePredictions = "final")
+                       classProbs = TRUE)
   rFClass4 <- train(factor(class4) ~ .,
                       method="rf",
-                      data=training_set,
-                      trControl=ctrl,
-                      preProc=c("pca","center", "scale"))
-  probs4 <- predict(rFClass4, newdata = validation_set, type = "prob")
+                      data=train.pc,
+                      trControl=ctrl)
+  probs4 <- predict(rFClass4, newdata = validate.pc, type = "prob")
   accuracy_4 <- rbind(accuracy_4, accClass4(probs4, validation_set))
+  pred <- predict(rFClass4, newdata = validate.pc)
+  confusionMatrix(pred, factor(validate.pc$class4))
 }
 accuracy_4
 ```
 
 
 ```{r}
+train.pc <- data.frame(npf.pcA2.withtest$x[1:458,1:14])
+train.pc$class4 <- npf$class4
+
+test.pc <- data.frame(npf.pcA2.withtest$x[459:(458+nrow(npf_test)),1:14])
+
 ctrl <- trainControl(method = "repeatedcv",
                      number = 10,
                      repeats = 10,
-                     classProbs = TRUE,
-                     savePredictions = "final")
+                     classProbs = TRUE)
 rFClass4 <- train(factor(class4) ~ .,
                     method="rf",
-                    data=npf,
-                    trControl=ctrl,
-                    preProc=c("pca","center", "scale"))
+                    data=train.pc,
+                    trControl=ctrl)
 
-pred_test4 <- predict(rFClass4, newdata = npf_test)
-probs_test4 <- predict(rFClass4, newdata = npf_test, type = "prob")
+pred_test4 <- predict(rFClass4, newdata = test.pc)
+probs_test4 <- predict(rFClass4, newdata = test.pc, type = "prob")
 
 length(which(pred_test4=="nonevent"))
 length(which(pred_test4=="Ia"))
