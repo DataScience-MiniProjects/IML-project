@@ -26,7 +26,7 @@ npf_test <- read.csv("npf_test_hidden.csv")
 rownames(npf) <- npf[,"date"]
 
 npf <- npf[,c(-1,-4)]
-npf_test <- npf_test[,c(-1,-2,-4)]
+npf_test <- npf_test[,c(-1,-2,-3,-4)]
 
 npf <- npf[, c("date",	"class4", "CO242.mean",	"CO2504.mean",	"Glob.mean",	
                 "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
@@ -35,18 +35,19 @@ npf <- npf[, c("date",	"class4", "CO242.mean",	"CO2504.mean",	"Glob.mean",
                 "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
                 "CS.mean")]
 
-npf_test <- npf_test[, c("class4","CO242.mean",	"CO2504.mean",	"Glob.mean",	
+npf_test <- npf_test[, c("CO242.mean",	"CO2504.mean",	"Glob.mean",	
                 "H2O42.mean",	"H2O504.mean", "NET.mean",	"NO42.mean",	"NO504.mean",	
                 "NOx42.mean",	"NOx504.mean", "O342.mean",	"O3504.mean",	"Pamb0.mean",	
                 "PAR.mean",	"PTG.mean", "RGlob.mean",	"RHIRGA42.mean",	"RHIRGA504.mean",	
                 "RPAR.mean", "SO2168.mean",	"SWS.mean",	"T42.mean",	"T504.mean",	"UV_A.mean",	
                 "CS.mean")]
 
-npf_test$class2 <- "nonevent"
-npf_test$class4 <- "nonevent"
-npf$class2 <- factor("event",levels=c("nonevent","event"))
-npf$class2[npf$class4=="nonevent"] <- "nonevent"
+npfBin <- npf
+npfBin$class2 <- factor("event",levels=c("nonevent","event"))
+npfBin$class2[npf$class4=="nonevent"] <- "nonevent"
 npf <- npf[,-1]
+npfBin <- npfBin[,-1]
+npfBin <- subset(npfBin, select=-c(class4))
 ```
 
 ```{r}
@@ -75,8 +76,8 @@ accClass2 <- function(p,dataset) {
     }
   }
   return(c(true_vals/length(dataset$class2), 
-         events/length(which(dataset$class4=="event")), 
-         nonevents/length(which(dataset$class4=="nonevent"))))
+         events/length(which(dataset$class2=="event")), 
+         nonevents/length(which(dataset$class2=="nonevent"))))
 }
 set.seed(42)
 # Sample size
@@ -85,8 +86,8 @@ accuracy_2 <-data.frame("Total","Event","Nonevent")
 for (i in 1:3) {
   idx <- sample.int(nrow(npf),nmbr[i])
 
-  training_set <- npf[ idx,]
-  validation_set <- npf[-idx,]
+  training_set <- npfBin[ idx,]
+  validation_set <- npfBin[-idx,]
   
   # 10-fold Cross-validation is repeated 10 times
   # Class probabilities are collected
