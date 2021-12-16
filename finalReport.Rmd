@@ -19,26 +19,25 @@ knitr::opts_chunk$set(echo = TRUE)
 library(ggfortify)
 library(randomForest)
 library(caret)
+library(ggplot2)
 ```
 
 ```{r, echo=F, message=F}
 set.seed(42)
-npf <- read.csv("/home/omistaja/IML-project/IML-project/npf_train.csv")
-npf_test <- read.csv("/home/omistaja/IML-project/IML-project/npf_test_hidden.csv")
+npf <- read.csv("npf_train.csv")
+npf_test <- read.csv("npf_test.csv")
 rownames(npf) <- npf[,"date"]
+rownames(npf_test) <- npf_test[,"date"]
 vars <- colnames(npf)[sapply(colnames(npf),
                              function(s) nchar(s)>5 && substr(s,nchar(s)-4,nchar(s))==".mean")]
-vars2 <- colnames(npf_test)[sapply(colnames(npf_test),
-                             function(s) nchar(s)>5 && substr(s,nchar(s)-4,nchar(s))==".mean")]
 npf <- npf[,c(vars,"class4")]
-npf_test <- npf_test[,c(vars2)]
+npf_test <- npf_test[,c(vars,"class4")]
 ## strip the trailing ".mean" to make the variable names prettier
 colnames(npf)[1:length(vars)] <- sapply(colnames(npf)[1:length(vars)],
                                         function(s) substr(s,1,nchar(s)-5))
-vars <- colnames(npf)[1:length(vars)]
-colnames(npf_test)[1:length(vars2)] <- sapply(colnames(npf_test)[1:length(vars2)],
+colnames(npf_test)[1:length(vars)] <- sapply(colnames(npf_test)[1:length(vars)],
                                         function(s) substr(s,1,nchar(s)-5))
-vars2 <- colnames(npf_test)[1:length(vars2)]
+vars <- colnames(npf)[1:length(vars)]
 
 ```
 
@@ -92,16 +91,20 @@ Below is the code we used to take the primary components of the combined trainin
 train.pc <- data.frame(npf.pcA2.withtest$x[1:458,1:14])
 train.pc$class4 <- npf$class4
 test.pc <- data.frame(npf.pcA2.withtest$x[459:(458+nrow(npf_test)),1:14])
+test.pc$class4 <- npf_test$class4
 ctrl <- trainControl(method = "repeatedcv",
                      number = 10,
                      repeats = 10,
-                     classProbs = TRUE)
+                     classProbs = TRUE,
+                     savePredictions = "final")
 rFClass4 <- train(factor(class4) ~ .,
                     method="rf",
                     data=train.pc,
                     trControl=ctrl)
+ggplot(rFClass4)
 pred_test4 <- predict(rFClass4, newdata = test.pc)
 probs_test4 <- predict(rFClass4, newdata = test.pc, type = "prob")
+confusionMatrix(pred_test4, factor(test.pc$class4))
 length(which(pred_test4=="nonevent"))
 length(which(pred_test4=="Ia"))
 length(which(pred_test4=="Ib"))
@@ -134,7 +137,9 @@ validate.pc$class4 <- npf[-idx,]$class4
 ctrl <- trainControl(method = "repeatedcv",
                      number = 10,
                      repeats = 10,
-                     classProbs = TRUE)
+                     classProbs = TRUE,
+                     selectionFunction = "best"
+                     )
 rFClass4 <- train(factor(class4) ~ .,
                     method="rf",
                     data=train.pc,
@@ -146,6 +151,8 @@ confusionMatrix(pred, factor(validate.pc$class4))
 ```
 
 This model obtains the multiclass accuracy of 0.69 which corresponds to binary classification accuracy of 0.83 when all the event classes are considered to be one combined class. Here, a training set of size 229 is used.
+
+## Conclusion
 
 ## Sources
 
