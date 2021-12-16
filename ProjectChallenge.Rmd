@@ -14,6 +14,7 @@ Used libraries
 library(ggfortify)
 library(randomForest)
 library(caret)
+library(ggplot2)
 ```
 
 Read data
@@ -107,13 +108,16 @@ test.pc$class4 <- npf_test$class4
 ctrl <- trainControl(method = "repeatedcv",
                      number = 10,
                      repeats = 10,
-                     classProbs = TRUE)
+                     classProbs = TRUE,
+                     savePredictions = "final")
 rFClass4 <- train(factor(class4) ~ .,
                     method="rf",
                     data=train.pc,
                     trControl=ctrl)
 
+ggplot(rFClass4)
 pred_test4 <- predict(rFClass4, newdata = test.pc)
+
 probs_test4 <- predict(rFClass4, newdata = test.pc, type = "prob")
 
 confusionMatrix(pred_test4, factor(test.pc$class4))
@@ -121,6 +125,10 @@ length(which(pred_test4=="nonevent"))
 length(which(pred_test4=="Ia"))
 length(which(pred_test4=="Ib"))
 length(which(pred_test4=="II"))
+```
+```{r}
+trellis.par.set(caretTheme())
+densityplot(rFClass4, pch = "|")
 ```
 
 ```{r}
