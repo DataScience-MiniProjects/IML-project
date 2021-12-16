@@ -5,6 +5,7 @@ date: "December, 2021"
 fontsize: 12pt
 output:
   pdf_document: default
+bibliography: biblio.bib
 ---
 
 ```{r setup, include=FALSE}
@@ -145,3 +146,9 @@ confusionMatrix(pred, factor(validate.pc$class4))
 ```
 
 This model obtains the multiclass accuracy of 0.69 which corresponds to binary classification accuracy of 0.83 when all the event classes are considered to be one combined class. Here, a training set of size 229 is used.
+
+## Sources
+
+`[@269490]` results in [@269490]
+
+`[-@269490]` results in [-@269490]
