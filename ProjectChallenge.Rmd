@@ -22,24 +22,22 @@ Read data
 set.seed(42)
 
 npf <- read.csv("npf_train.csv")
-npf_test <- read.csv("npf_test_hidden.csv")
+npf_test <- read.csv("npf_test.csv")
 
 rownames(npf) <- npf[,"date"]
-
+rownames(npf_test) <- npf_test[,"date"]
 vars <- colnames(npf)[sapply(colnames(npf),
                              function(s) nchar(s)>5 && substr(s,nchar(s)-4,nchar(s))==".mean")]
-vars2 <- colnames(npf_test)[sapply(colnames(npf_test),
-                             function(s) nchar(s)>5 && substr(s,nchar(s)-4,nchar(s))==".mean")]
+
 npf <- npf[,c(vars,"class4")]
-npf_test <- npf_test[,c(vars2)]
+npf_test <- npf_test[,c(vars,"class4")]
 ## strip the trailing ".mean" to make the variable names prettier
 colnames(npf)[1:length(vars)] <- sapply(colnames(npf)[1:length(vars)],
                                         function(s) substr(s,1,nchar(s)-5))
-vars <- colnames(npf)[1:length(vars)]
 
-colnames(npf_test)[1:length(vars2)] <- sapply(colnames(npf_test)[1:length(vars2)],
+colnames(npf_test)[1:length(vars)] <- sapply(colnames(npf_test)[1:length(vars)],
                                         function(s) substr(s,1,nchar(s)-5))
-vars2 <- colnames(npf_test)[1:length(vars2)]
+vars <- colnames(npf)[1:length(vars)]
 ```
 
 
@@ -86,7 +84,9 @@ validate.pc$class4 <- npf[-idx,]$class4
 ctrl <- trainControl(method = "repeatedcv",
                      number = 10,
                      repeats = 10,
-                     classProbs = TRUE)
+                     classProbs = TRUE,
+                     selectionFunction = "best"
+                     )
 rFClass4 <- train(factor(class4) ~ .,
                     method="rf",
                     data=train.pc,
@@ -103,7 +103,7 @@ train.pc <- data.frame(npf.pcA2.withtest$x[1:458,1:14])
 train.pc$class4 <- npf$class4
 
 test.pc <- data.frame(npf.pcA2.withtest$x[459:(458+nrow(npf_test)),1:14])
-
+test.pc$class4 <- npf_test$class4
 ctrl <- trainControl(method = "repeatedcv",
                      number = 10,
                      repeats = 10,
@@ -116,6 +116,7 @@ rFClass4 <- train(factor(class4) ~ .,
 pred_test4 <- predict(rFClass4, newdata = test.pc)
 probs_test4 <- predict(rFClass4, newdata = test.pc, type = "prob")
 
+confusionMatrix(pred_test4, factor(test.pc$class4))
 length(which(pred_test4=="nonevent"))
 length(which(pred_test4=="Ia"))
 length(which(pred_test4=="Ib"))
