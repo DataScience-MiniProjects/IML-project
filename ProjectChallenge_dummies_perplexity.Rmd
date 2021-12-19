@@ -1,0 +1,204 @@
+---
+title: "Project Challenge"
+output: pdf_document
+author: "Franssila Fanni, Suihkonen Sini, Savolainen Outi"
+date: "December 9, 2021"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\newpage
+Used libraries
+```{r, message=F}
+library(ggfortify)
+library(randomForest)
+library(caret)
+library(ggplot2)
+```
+
+Read data
+
+```{r}
+set.seed(42)
+
+npf <- read.csv("npf_train.csv")
+npf_test <- read.csv("npf_test.csv")
+
+rownames(npf) <- npf[,"date"]
+rownames(npf_test) <- npf_test[,"date"]
+vars <- colnames(npf)[sapply(colnames(npf),
+                             function(s) nchar(s)>5 && substr(s,nchar(s)-4,nchar(s))==".mean")]
+
+npf <- npf[,c(vars,"class4")]
+npf_test <- npf_test[,c(vars,"class4")]
+## strip the trailing ".mean" to make the variable names prettier
+colnames(npf)[1:length(vars)] <- sapply(colnames(npf)[1:length(vars)],
+                                        function(s) substr(s,1,nchar(s)-5))
+
+colnames(npf_test)[1:length(vars)] <- sapply(colnames(npf_test)[1:length(vars)],
+                                        function(s) substr(s,1,nchar(s)-5))
+vars <- colnames(npf)[1:length(vars)]
+```
+
+
+
+```{r}
+npf.pcA2 <- prcomp(scale(npf[,vars]))
+npf.pcA2.withtest <- prcomp(scale(rbind(npf[,vars],npf_test[,vars])))
+autoplot(npf.pcA2, data=npf, colour="class4", loadings=T, loadings.label=T)
+```
+
+
+Binary accuracy on random forest classifier with different sized training/validation sets:
+## Binary accuracy (class 2)
+
+
+## Accuracy of the estimate of accuracy
+
+```{r}
+
+```
+
+## Perplexity
+
+```{r}
+
+```
+
+## Multi-class accuracy (class4)
+
+Multiclass accuracy on the random forest classifier:
+
+```{r}
+set.seed(42)
+# Calculates the accuracy to each class and the total accuracy
+npf.pcA2 <- prcomp(npf[,vars], center=T, scale=T)
+
+idx <- sample.int(nrow(npf),229)
+training_set <- npf[ idx,]
+validation_set <- npf[-idx,]
+train.pc <- data.frame(npf.pcA2$x[idx,1:14])
+train.pc$class4 <- npf[idx,]$class4
+validate.pc <- data.frame(npf.pcA2$x[-idx,1:14])
+validate.pc$class4 <- npf[-idx,]$class4
+ctrl <- trainControl(method = "repeatedcv",
+                     number = 10,
+                     repeats = 10,
+                     classProbs = TRUE,
+                     selectionFunction = "best"
+                     )
+rFClass4 <- train(factor(class4) ~ .,
+                    method="rf",
+                    data=train.pc,
+                    trControl=ctrl)
+probs4 <- predict(rFClass4, newdata = validate.pc, type = "prob")
+pred <- predict(rFClass4, newdata = validate.pc)
+confusionMatrix(pred, factor(validate.pc$class4))
+
+```
+
+
+```{r}
+train.pc <- data.frame(npf.pcA2.withtest$x[1:458,1:14])
+train.pc$class4 <- npf$class4
+
+test.pc <- data.frame(npf.pcA2.withtest$x[459:(458+nrow(npf_test)),1:14])
+test.pc$class4 <- npf_test$class4
+ctrl <- trainControl(method = "repeatedcv",
+                     number = 10,
+                     repeats = 10,
+                     classProbs = TRUE,
+                     savePredictions = "final")
+rFClass4 <- train(factor(class4) ~ .,
+                    method="rf",
+                    data=train.pc,
+                    trControl=ctrl)
+
+ggplot(rFClass4)
+pred_test4 <- predict(rFClass4, newdata = test.pc)
+
+probs_test4 <- predict(rFClass4, newdata = test.pc, type = "prob")
+
+confusionMatrix(pred_test4, factor(test.pc$class4))
+length(which(pred_test4=="nonevent"))
+length(which(pred_test4=="Ia"))
+length(which(pred_test4=="Ib"))
+length(which(pred_test4=="II"))
+```
+```{r}
+trellis.par.set(caretTheme())
+densityplot(rFClass4, pch = "|")
+
+
+pred_dummy <- c()
+for (i in 1:nrow(npf_test)) {
+  r <- runif(1)
+  if (r <= 0.5) {
+    pred_dummy[i] <- "nonevent"
+  } else if (r <= 258/458) {
+    pred_dummy[i] <- "Ia"
+  } else if (r <= 341/458) {
+    pred_dummy[i] <- "Ib"
+  } else {
+    pred_dummy[i] <- "II"
+  }
+}
+
+conf <- confusionMatrix(factor(pred_dummy), factor(test.pc$class4))
+
+perp <- function(probs, y=npf_test$class4) {
+  exp(-mean(log(ifelse(y!='nonevent', probs, 1-probs))))
+}
+
+pd2 <- perp(rep(0, 965))
+pd1 <- perp(ifelse(pred_dummy!='nonevent', 1, 0))
+p <- perp((probs_test4$Ia+probs_test4$Ib+probs_test4$II))
+
+
+```
+
+```{r}
+# Code to produce the answer-csv
+# The first column "class4" in the answers.csv file is our 
+# prediction for the day, where class4 is Ia, Ib, II, or nonevent.
+# The second column "p" is our prediction for probability Pr(class2=event)
+
+
+# Creates the csv and adds the first line
+# Change the string here to our guess of the accuracy
+write.table(0.75,
+             file="./answers.csv",
+             append = F,
+             sep=',',
+             row.names=F,
+             col.names=F)
+
+# Write column names to the file
+write.table(data.frame("class4","p"),
+            file="./answers.csv",
+            append = T,
+            sep=',',
+            row.names=F,
+            col.names=F)
+
+# testing testing
+#setwd()
+#probs_test4 <- data.frame(c(0.1,0.2,0.5,0.1,0.5),c(0.6,0.05,0.1,0.2,0.05),c(0.1,0.7,0.2,0.2,0.15),c(0.2,0.05,0.2,0.5,0.3))
+#colnames(probs_test4)<- c("Ia","Ib","II","nonevent")
+
+# Assume the class probabilities for each row are in probs_test4
+classes_test4 <- colnames(probs_test4)[max.col(probs_test4, ties.method = "first")]
+
+# Write the class predictions and probabilities
+write.table(data.frame(classes_test4, (probs_test4$Ia+probs_test4$Ib+probs_test4$II)),
+            file="./answers.csv",
+            append = T,
+            sep=',',
+            row.names=F,
+            col.names=F)
+
+
+
+```
+
